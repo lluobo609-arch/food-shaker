@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>今天吃什么？点一点！</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            height: 100%;
+            overflow-x: hidden;
+        }
+
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            min-height: 100vh;
+            background: linear-gradient(160deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 16px 40px;
+        }
+
+        .container {
+            max-width: 500px;
+            width: 100%;
+        }
+
+        /* 头部 */
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-top: 10px;
+        }
+
+        h1 {
+            color: #fff;
+            font-size: 1.8rem;
+            margin-bottom: 6px;
+            text-shadow: 2px 2px 6px rgba(0,0,0,0.3);
+        }
+
+        .subtitle {
+            color: rgba(255,255,255,0.85);
+            font-size: 0.95rem;
+        }
+
+        /* 切换 Tab */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+            justify-content: center;
+        }
+
+        .tab-btn {
+            background: rgba(255,255,255,0.25);
+            color: white;
+            border: 2px solid rgba(255,255,255,0.4);
+            padding: 10px 28px;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.25s;
+            touch-action: manipulation;
+        }
+
+        .tab-btn.active {
+            background: white;
+            color: #667eea;
+            font-weight: bold;
+            border-color: white;
+        }
+
+        /* 点一点卡片 */
+        .shaker-box {
+            background: #fff;
+            border-radius: 24px;
+            padding: 28px 20px 24px;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.25);
+            display: none;
+        }
+
+        .shaker-box.active {
+            display: block;
+        }
+
+        /* 结果展示区 */
+        .food-display {
+            min-height: 90px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 24px;
+        }
+
+        .food-item {
+            padding: 16px 32px;
+            border-radius: 18px;
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            font-size: 1.5rem;
+            font-weight: bold;
+            box-shadow: 0 8px 24px rgba(245, 87, 108, 0.4);
+            white-space: nowrap;
+            text-align: center;
+        }
+
+        /* 主按钮 */
+        .shake-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 18px;
+            font-size: 1.25rem;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.45);
+            font-weight: bold;
+            width: 100%;
+            margin-bottom: 20px;
+            touch-action: manipulation;
+            transition: transform 0.15s, box-shadow 0.15s;
+            -webkit-appearance: none;
+        }
+
+        .shake-btn:active:not(:disabled) {
+            transform: scale(0.97);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        .shake-btn:disabled {
+            opacity: 0.65;
+        }
+
+        /* 美食清单 */
+        .food-list {
+            margin-top: 18px;
+            padding-top: 18px;
+            border-top: 2px dashed #ebebeb;
+        }
+
+        .food-list h3 {
+            color: #888;
+            margin-bottom: 12px;
+            font-size: 0.95rem;
+            text-align: center;
+        }
+
+        .tags {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .tag {
+            background: #f4f4f4;
+            color: #666;
+            padding: 7px 14px;
+            border-radius: 20px;
+            font-size: 0.88rem;
+        }
+
+        .tag.selected {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+
+        .tag.big-meal {
+            background: #fff8ee;
+            border: 2px solid #ffa500;
+            color: #e08800;
+            font-weight: bold;
+        }
+
+        .tag.big-meal.selected {
+            background: linear-gradient(135deg, #ffd200 0%, #f7971e 100%);
+            border-color: transparent;
+            color: white;
+        }
+
+        .probability-info {
+            margin-top: 14px;
+            padding-top: 14px;
+            border-top: 1px dashed #e0e0e0;
+            font-size: 0.82rem;
+            color: #aaa;
+            line-height: 1.8;
+            text-align: center;
+        }
+
+        .probability-info strong {
+            color: #e08800;
+        }
+
+        /* 历史记录 */
+        .history-container {
+            background: #fff;
+            border-radius: 24px;
+            padding: 20px 16px;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.25);
+            display: none;
+            max-height: 72vh;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .history-container.active {
+            display: block;
+        }
+
+        .stats {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 16px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.82rem;
+            opacity: 0.85;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .history-item {
+            background: #f7f7f7;
+            border-left: 4px solid #667eea;
+            padding: 12px 14px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .history-item-food {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1.05rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .history-item-time {
+            color: #aaa;
+            font-size: 0.82rem;
+            text-align: right;
+            white-space: nowrap;
+        }
+
+        .history-item-day {
+            color: #667eea;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #bbb;
+        }
+
+        .empty-state-icon {
+            font-size: 2.8rem;
+            margin-bottom: 10px;
+        }
+
+        .clear-btn {
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 24px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            margin-top: 16px;
+            width: 100%;
+            touch-action: manipulation;
+            -webkit-appearance: none;
+        }
+
+        .clear-btn:active {
+            opacity: 0.8;
+        }
+
+        /* 滚动条美化 */
+        .history-container::-webkit-scrollbar {
+            width: 4px;
+        }
+        .history-container::-webkit-scrollbar-thumb {
+            background: #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎲 今天吃什么？</h1>
+            <p class="subtitle">选择困难症救星，点一点决定你的美食！</p>
+        </div>
+
+        <div class="tabs">
+            <button class="tab-btn active" id="tabShake" ontouchstart="" onclick="switchTab('shake')">🎰 点一点</button>
+            <button class="tab-btn" id="tabHistory" ontouchstart="" onclick="switchTab('history')">📋 历史记录</button>
+        </div>
+
+        <!-- 点一点 -->
+        <div class="shaker-box active" id="shakeTab">
+            <div class="food-display">
+                <div class="food-item" id="foodDisplay">点击下方开始</div>
+            </div>
+            <button class="shake-btn" id="shakeBtn">🎰 点一点</button>
+
+            <div class="food-list">
+                <h3>🍽️ 候选美食清单</h3>
+                <div class="tags" id="foodTags"></div>
+                <div class="probability-info" id="probabilityInfo"></div>
+            </div>
+        </div>
+
+        <!-- 历史记录 -->
+        <div class="history-container" id="historyTab">
+            <div class="stats" id="stats"></div>
+            <div id="historyList"></div>
+            <button class="clear-btn" ontouchstart="" onclick="clearHistory()">🗑️ 清空所有记录</button>
+        </div>
+    </div>
+
+    <script>
+        var foods = [
+            { name: '烧腊',   emoji: '🍖', weight: 1 },
+            { name: '湘土豆', emoji: '🥔', weight: 1 },
+            { name: '三两粉', emoji: '🍜', weight: 1 },
+            { name: '焖锅',   emoji: '🥘', weight: 1 },
+            { name: '碗湘乐', emoji: '🍚', weight: 1 },
+            { name: '遇见小面', emoji: '🍜', weight: 1 },
+            { name: '小女当家', emoji: '🥗', weight: 1 },
+            { name: '小锅米线', emoji: '🍲', weight: 1 },
+            { name: '贵州米线', emoji: '🍝', weight: 1 },
+            { name: '河粉',   emoji: '🥢', weight: 1 },
+            { name: '猪脚饭', emoji: '🍛', weight: 1 },
+            { name: '辣可可', emoji: '🌶️', weight: 0.244 },
+            { name: '椰子鸡', emoji: '🥥', weight: 0.244 },
+            { name: '牛腩煲', emoji: '🥩', weight: 0.244 },
+            { name: '石锅鱼', emoji: '🐟', weight: 0.244 },
+            { name: '螺蛳粉', emoji: '🍜', weight: 0.244 },
+            { name: '牛肉火锅', emoji: '🫕', weight: 0.244 }
+        ];
+
+        var isShaking = false;
+
+        function initFoodTags() {
+            var container = document.getElementById('foodTags');
+            var totalWeight = foods.reduce(function(s, f) { return s + f.weight; }, 0);
+
+            foods.forEach(function(food) {
+                var tag = document.createElement('span');
+                tag.className = 'tag' + (food.weight < 1 ? ' big-meal' : '');
+                tag.textContent = food.emoji + ' ' + food.name;
+                tag.id = 'tag-' + food.name;
+                container.appendChild(tag);
+            });
+
+            var bigProb = ((0.244 / totalWeight) * 100).toFixed(1);
+            var normProb = ((1 / totalWeight) * 100).toFixed(1);
+            document.getElementById('probabilityInfo').innerHTML =
+                '<strong>🌟 大餐菜</strong>（概率 ' + bigProb + '%）：椰子鸡、牛腩煲、石锅鱼、辣可可、螺蛳粉、牛肉火锅 - 一周吃一次<br>' +
+                '<strong>🍜 普通菜</strong>（概率 ' + normProb + '%）：烧腊、湘土豆、三两粉、焖锅、碗湘乐、遇见小面、小女当家、小锅米线、贵州米线、河粉、猪脚饭';
+        }
+
+        function getRandomFood() {
+            var total = foods.reduce(function(s, f) { return s + f.weight; }, 0);
+            var r = Math.random() * total;
+            for (var i = 0; i < foods.length; i++) {
+                r -= foods[i].weight;
+                if (r <= 0) return foods[i];
+            }
+            return foods[0];
+        }
+
+        function getWeekDay(d) {
+            return ['周日','周一','周二','周三','周四','周五','周六'][d.getDay()];
+        }
+
+        function formatDateTime(d) {
+            var m = String(d.getMonth()+1).padStart(2,'0');
+            var day = String(d.getDate()).padStart(2,'0');
+            var h = String(d.getHours()).padStart(2,'0');
+            var min = String(d.getMinutes()).padStart(2,'0');
+            return m + '-' + day + ' ' + h + ':' + min;
+        }
+
+        function saveRecord(food) {
+            var now = new Date();
+            var record = {
+                food: food.name,
+                emoji: food.emoji,
+                timestamp: now.getTime(),
+                dateStr: formatDateTime(now),
+                weekDay: getWeekDay(now)
+            };
+            try {
+                var history = JSON.parse(localStorage.getItem('foodHistory') || '[]');
+                history.unshift(record);
+                localStorage.setItem('foodHistory', JSON.stringify(history));
+            } catch(e) {}
+        }
+
+        function getHistory() {
+            try {
+                return JSON.parse(localStorage.getItem('foodHistory') || '[]');
+            } catch(e) { return []; }
+        }
+
+        function displayHistory() {
+            var history = getHistory();
+            var historyList = document.getElementById('historyList');
+            var stats = document.getElementById('stats');
+
+            var totalCount = history.length;
+            var foodCount = {};
+            foods.forEach(function(f) { foodCount[f.name] = 0; });
+            history.forEach(function(r) {
+                if (foodCount[r.food] !== undefined) foodCount[r.food]++;
+            });
+            var sorted = Object.entries(foodCount).sort(function(a,b){ return b[1]-a[1]; });
+            var mostEaten = sorted[0] && sorted[0][1] > 0 ? sorted[0][0] : '-';
+
+            stats.innerHTML =
+                '<div class="stat-item"><div class="stat-label">总记录次数</div><div class="stat-value">' + totalCount + '</div></div>' +
+                '<div class="stat-item"><div class="stat-label">最常吃</div><div class="stat-value" style="font-size:1.1rem;padding-top:6px">' + mostEaten + '</div></div>';
+
+            if (history.length === 0) {
+                historyList.innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><p>还没有记录哦，快去点一点吧！</p></div>';
+                return;
+            }
+
+            historyList.innerHTML = history.map(function(r) {
+                return '<div class="history-item">' +
+                    '<div class="history-item-food"><span>' + r.emoji + '</span><span>' + r.food + '</span></div>' +
+                    '<div class="history-item-time"><div class="history-item-day">' + r.weekDay + '</div><div>' + r.dateStr + '</div></div>' +
+                    '</div>';
+            }).join('');
+        }
+
+        function switchTab(tab) {
+            document.getElementById('shakeTab').classList.remove('active');
+            document.getElementById('historyTab').classList.remove('active');
+            document.getElementById('tabShake').classList.remove('active');
+            document.getElementById('tabHistory').classList.remove('active');
+            if (tab === 'shake') {
+                document.getElementById('shakeTab').classList.add('active');
+                document.getElementById('tabShake').classList.add('active');
+            } else {
+                document.getElementById('historyTab').classList.add('active');
+                document.getElementById('tabHistory').classList.add('active');
+                displayHistory();
+            }
+        }
+
+        function clearHistory() {
+            if (confirm('确定要清空所有记录吗？')) {
+                try { localStorage.removeItem('foodHistory'); } catch(e) {}
+                displayHistory();
+            }
+        }
+
+        function shakeNow() {
+            if (isShaking) return;
+            isShaking = true;
+
+            var btn = document.getElementById('shakeBtn');
+            var display = document.getElementById('foodDisplay');
+
+            btn.disabled = true;
+            btn.textContent = '🎲 点中奖...';
+            document.querySelectorAll('.tag').forEach(function(t){ t.classList.remove('selected'); });
+
+            var count = 0;
+            var interval = setInterval(function() {
+                var food = getRandomFood();
+                display.textContent = food.emoji + ' ' + food.name;
+                count++;
+                if (count >= 15) {
+                    clearInterval(interval);
+                    setTimeout(function() {
+                        var winner = getRandomFood();
+                        display.textContent = winner.emoji + ' ' + winner.name;
+                        var tag = document.getElementById('tag-' + winner.name);
+                        if (tag) tag.classList.add('selected');
+                        saveRecord(winner);
+                        btn.disabled = false;
+                        btn.textContent = '🎰 再点一次';
+                        isShaking = false;
+                    }, 300);
+                }
+            }, 80);
+        }
+
+        window.onload = function() {
+            initFoodTags();
+            document.getElementById('shakeBtn').addEventListener('click', shakeNow);
+        };
+    </script>
+</body>
+</html>
