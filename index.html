@@ -353,54 +353,116 @@
 
     <script>
         var foods = [
-            { name: '烧腊',   emoji: '🍖', weight: 1 },
-            { name: '湘土豆', emoji: '🥔', weight: 1 },
-            { name: '三两粉', emoji: '🍜', weight: 1 },
-            { name: '焖锅',   emoji: '🥘', weight: 1 },
-            { name: '碗湘乐', emoji: '🍚', weight: 1 },
-            { name: '遇见小面', emoji: '🍜', weight: 1 },
-            { name: '小女当家', emoji: '🥗', weight: 1 },
-            { name: '小锅米线', emoji: '🍲', weight: 1 },
-            { name: '贵州米线', emoji: '🍝', weight: 1 },
-            { name: '河粉',   emoji: '🥢', weight: 1 },
-            { name: '猪脚饭', emoji: '🍛', weight: 1 },
-            { name: '辣可可', emoji: '🌶️', weight: 0.244 },
-            { name: '椰子鸡', emoji: '🥥', weight: 0.244 },
-            { name: '牛腩煲', emoji: '🥩', weight: 0.244 },
-            { name: '石锅鱼', emoji: '🐟', weight: 0.244 },
-            { name: '螺蛳粉', emoji: '🍜', weight: 0.244 },
-            { name: '牛肉火锅', emoji: '🫕', weight: 0.244 }
+            { name: '烧腊',   emoji: '🍖', weight: 1, isBigMeal: false },
+            { name: '湘土豆', emoji: '🥔', weight: 1, isBigMeal: false },
+            { name: '三两粉', emoji: '🍜', weight: 1, isBigMeal: false },
+            { name: '焖锅',   emoji: '🥘', weight: 1, isBigMeal: false },
+            { name: '碗湘乐', emoji: '🍚', weight: 1, isBigMeal: false },
+            { name: '遇见小面', emoji: '🍜', weight: 1, isBigMeal: false },
+            { name: '小女当家', emoji: '🥗', weight: 1, isBigMeal: false },
+            { name: '小锅米线', emoji: '🍲', weight: 1, isBigMeal: false },
+            { name: '贵州米线', emoji: '🍝', weight: 1, isBigMeal: false },
+            { name: '河粉',   emoji: '🥢', weight: 1, isBigMeal: false },
+            { name: '猪脚饭', emoji: '🍛', weight: 1, isBigMeal: false },
+            { name: '辣可可', emoji: '🌶️', weight: 0.244, isBigMeal: true },
+            { name: '椰子鸡', emoji: '🥥', weight: 0.244, isBigMeal: true },
+            { name: '牛腩煲', emoji: '🥩', weight: 0.244, isBigMeal: true },
+            { name: '石锅鱼', emoji: '🐟', weight: 0.244, isBigMeal: true },
+            { name: '螺蛳粉', emoji: '🍜', weight: 0.244, isBigMeal: true },
+            { name: '牛肉火锅', emoji: '🫕', weight: 0.244, isBigMeal: true }
         ];
 
         var isShaking = false;
 
+        // ============ 本周大餐记录逻辑 ============
+        // 获取本周的唯一标识（周一日期字符串，如"2026-03-23"）
+        function getThisWeekKey() {
+            var now = new Date();
+            var day = now.getDay(); // 0=周日,1=周一...6=周六
+            // 计算到本周周一的偏移（周六/周日不算工作周，往前找周一）
+            var diff = day === 0 ? -6 : 1 - day;
+            var monday = new Date(now);
+            monday.setDate(now.getDate() + diff);
+            var y = monday.getFullYear();
+            var m = String(monday.getMonth() + 1).padStart(2, '0');
+            var d = String(monday.getDate()).padStart(2, '0');
+            return 'week-' + y + '-' + m + '-' + d;
+        }
+
+        // 判断今天是否是工作日（周一到周五）
+        function isWorkday() {
+            var day = new Date().getDay();
+            return day >= 1 && day <= 5;
+        }
+
+        // 本周是否已经吃过大餐
+        function hasEatenBigMealThisWeek() {
+            try {
+                var key = getThisWeekKey();
+                return localStorage.getItem('bigMeal_' + key) === '1';
+            } catch(e) { return false; }
+        }
+
+        // 记录本周已吃大餐
+        function markBigMealEaten() {
+            try {
+                var key = getThisWeekKey();
+                localStorage.setItem('bigMeal_' + key, '1');
+            } catch(e) {}
+        }
+
+        // 获取当前有效权重（若本周已吃大餐，大餐权重归零）
+        function getEffectiveFoods() {
+            var alreadyAte = hasEatenBigMealThisWeek();
+            return foods.map(function(f) {
+                return {
+                    name: f.name,
+                    emoji: f.emoji,
+                    weight: (f.isBigMeal && alreadyAte) ? 0 : f.weight,
+                    isBigMeal: f.isBigMeal
+                };
+            });
+        }
+        // ==========================================
+
         function initFoodTags() {
             var container = document.getElementById('foodTags');
-            var totalWeight = foods.reduce(function(s, f) { return s + f.weight; }, 0);
-
             foods.forEach(function(food) {
                 var tag = document.createElement('span');
-                tag.className = 'tag' + (food.weight < 1 ? ' big-meal' : '');
+                tag.className = 'tag' + (food.isBigMeal ? ' big-meal' : '');
                 tag.textContent = food.emoji + ' ' + food.name;
                 tag.id = 'tag-' + food.name;
                 container.appendChild(tag);
             });
+            updateProbabilityInfo();
+        }
 
-            var bigProb = ((0.244 / totalWeight) * 100).toFixed(1);
+        function updateProbabilityInfo() {
+            var effectiveFoods = getEffectiveFoods();
+            var totalWeight = effectiveFoods.reduce(function(s, f) { return s + f.weight; }, 0);
+            var alreadyAte = hasEatenBigMealThisWeek();
+
+            var bigProb = alreadyAte ? 0 : ((0.244 / totalWeight) * 100).toFixed(1);
             var normProb = ((1 / totalWeight) * 100).toFixed(1);
+
+            var bigMealStatus = alreadyAte
+                ? '（本周已吃过大餐，本周剩余时间不再出现）'
+                : '（概率 ' + bigProb + '%，一周吃一次）';
+
             document.getElementById('probabilityInfo').innerHTML =
-                '<strong>🌟 大餐菜</strong>（概率 ' + bigProb + '%）：椰子鸡、牛腩煲、石锅鱼、辣可可、螺蛳粉、牛肉火锅 - 一周吃一次<br>' +
+                '<strong>🌟 大餐菜</strong>' + bigMealStatus + '：椰子鸡、牛腩煲、石锅鱼、辣可可、螺蛳粉、牛肉火锅<br>' +
                 '<strong>🍜 普通菜</strong>（概率 ' + normProb + '%）：烧腊、湘土豆、三两粉、焖锅、碗湘乐、遇见小面、小女当家、小锅米线、贵州米线、河粉、猪脚饭';
         }
 
         function getRandomFood() {
-            var total = foods.reduce(function(s, f) { return s + f.weight; }, 0);
+            var effectiveFoods = getEffectiveFoods();
+            var total = effectiveFoods.reduce(function(s, f) { return s + f.weight; }, 0);
             var r = Math.random() * total;
-            for (var i = 0; i < foods.length; i++) {
-                r -= foods[i].weight;
-                if (r <= 0) return foods[i];
+            for (var i = 0; i < effectiveFoods.length; i++) {
+                r -= effectiveFoods[i].weight;
+                if (r <= 0) return effectiveFoods[i];
             }
-            return foods[0];
+            return effectiveFoods[0];
         }
 
         function getWeekDay(d) {
@@ -422,13 +484,19 @@
                 emoji: food.emoji,
                 timestamp: now.getTime(),
                 dateStr: formatDateTime(now),
-                weekDay: getWeekDay(now)
+                weekDay: getWeekDay(now),
+                isBigMeal: food.isBigMeal || false
             };
             try {
                 var history = JSON.parse(localStorage.getItem('foodHistory') || '[]');
                 history.unshift(record);
                 localStorage.setItem('foodHistory', JSON.stringify(history));
             } catch(e) {}
+            // 如果是大餐，记录本周已吃大餐
+            if (food.isBigMeal) {
+                markBigMealEaten();
+                updateProbabilityInfo(); // 立刻更新说明文字
+            }
         }
 
         function getHistory() {
@@ -461,8 +529,9 @@
             }
 
             historyList.innerHTML = history.map(function(r) {
-                return '<div class="history-item">' +
-                    '<div class="history-item-food"><span>' + r.emoji + '</span><span>' + r.food + '</span></div>' +
+                var borderColor = r.isBigMeal ? '#ffa500' : '#667eea';
+                return '<div class="history-item" style="border-left-color:' + borderColor + '">' +
+                    '<div class="history-item-food"><span>' + r.emoji + '</span><span>' + r.food + (r.isBigMeal ? ' 🌟' : '') + '</span></div>' +
                     '<div class="history-item-time"><div class="history-item-day">' + r.weekDay + '</div><div>' + r.dateStr + '</div></div>' +
                     '</div>';
             }).join('');
@@ -485,7 +554,12 @@
 
         function clearHistory() {
             if (confirm('确定要清空所有记录吗？')) {
-                try { localStorage.removeItem('foodHistory'); } catch(e) {}
+                try {
+                    localStorage.removeItem('foodHistory');
+                    // 同时清除本周大餐标记
+                    localStorage.removeItem('bigMeal_' + getThisWeekKey());
+                } catch(e) {}
+                updateProbabilityInfo();
                 displayHistory();
             }
         }
